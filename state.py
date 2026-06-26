@@ -6,4 +6,4 @@ class state(TypedDict):
     demand:dict
     risk:str
     policy:str
-    recommented:str
+    recommentaion:str
