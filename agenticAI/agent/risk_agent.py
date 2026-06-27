@@ -1,5 +1,5 @@
-from state import state
-def risk_agent(state:state):
+from state import State
+def risk_analysis(state:State):
     stock=state['inventory']['current_stock']
     sold=state['inventory']['quantity_sold']
     if stock<=sold:
