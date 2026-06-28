@@ -1,5 +1,5 @@
-from langgraph.graph.message import add_messages
 from typing import TypedDict,Annotated
+from langgraph.graph.message import add_messages
 class State(TypedDict):
     message:Annotated[list,add_messages]
     inventory:dict
@@ -7,3 +7,4 @@ class State(TypedDict):
     risk:str
     policy:str
     recommentated:str
+    
