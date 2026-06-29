@@ -1,6 +1,6 @@
-from config import llm
-from state import State
-def recommentated_agent(state:State):
+from agenticAI.config import llm
+from agenticAI.state import state
+def recommentated_agent(state:state):
     inventory=state['inventory']
     demand=state['demand']
     risk=state['risk']
@@ -22,4 +22,3 @@ def recommentated_agent(state:State):
     """
     response=llm.invoke(prompt)
     state['recommentated']=response.content
-    return state
