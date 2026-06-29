@@ -1,27 +1,25 @@
-from state import State
 from config import llm
-def recommendation_agent(state:State):
+from state import State
+def recommentated_agent(state:State):
     inventory=state['inventory']
     demand=state['demand']
     risk=state['risk']
-    policy=state['policy']
+    policy=state['risk']
     prompt=f"""
-    You Are At Autonomus Inventory Replenishment Agent
+    You Are at Autonomous replenishment Inventory Agent
     product name:{inventory['product_name']}
     current stock:{inventory['current_stock']}
     quantity sold:{inventory['quantity_sold']}
     estimated demand:{demand['estimated_demand']}
     risk level:{risk}
     company policies:{policy}
-    Based in the above information whether retailers wants to reorder the product
-    Mention:
+    Based on the given information whether retailer will reorder the product
+    mention:
     1.stock states
-    2.Risk level
-    3.Recommentated
+    2.risk level
+    3.recommentated
     4.Reason
     """
     response=llm.invoke(prompt)
     state['recommentated']=response.content
     return state
-
-    
