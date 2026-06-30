@@ -128,6 +128,38 @@ def render_kpi_card(title, value, change, detail="", icon="📊", card_type="def
     </div>
     """
 
+def render_highlight_card(product_name, sku, daily_avg, trend, days_left):
+    bg_color = "#FFF5F5"
+    border_color = "#FEB2B2"
+    badge_color = "#E53E3E"
+    
+    if days_left <= 3.0:
+        days_style = "color: #E53E3E; font-weight: 700;"
+    elif days_left <= 7.0:
+        days_style = "color: #DD6B20; font-weight: 700;"
+    else:
+        days_style = "color: #38A169; font-weight: 700;"
+        
+    return f"""
+    <div style="background-color: {bg_color}; border: 1px solid {border_color}; padding: 15px; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-shadow: 0 2px 5px rgba(229, 62, 62, 0.04);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <span style="background-color: #FED7D7; color: {badge_color}; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid {badge_color}20;">🔥 High Demand</span>
+            <span style="font-size: 11px; font-family: monospace; color: #718096; font-weight: 600;">{sku}</span>
+        </div>
+        <div style="font-size: 14px; font-weight: 700; color: #1C3D5A; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{product_name}">{product_name}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #FEB2B2; padding-top: 8px; margin-top: 4px; font-size: 12px;">
+            <div>
+                <span style="color: #718096; display: block; font-size: 9px; text-transform: uppercase; font-weight: 600;">Daily Velocity</span>
+                <span style="font-weight: 700; color: #E53E3E; font-size: 12px;">{daily_avg} units/day</span>
+            </div>
+            <div style="text-align: right;">
+                <span style="color: #718096; display: block; font-size: 9px; text-transform: uppercase; font-weight: 600;">Days Remaining</span>
+                <span style="{days_style}">{days_left}d left</span>
+            </div>
+        </div>
+    </div>
+    """
+
 TABLE_BASE_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -573,6 +605,30 @@ if selected_page == "Overview":
     with col_kpi5:
         st.markdown(render_kpi_card("Critical Alerts", summary["critical_alerts"]["value"], summary["critical_alerts"]["change"], "Urgent attention", "🚨", "red"), unsafe_allow_html=True)
         
+    # Demanded Products Highlight Section
+    st.markdown("""
+    <div style="font-weight: 700; color: #1C3D5A; font-size: 16px; margin-top: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+        <span>🔥</span> Demanded Products Highlight
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_high1, col_high2, col_high3 = st.columns(3)
+    top_velocity_items = demand_data.get("top_velocity_skus", [])[:3]
+    for idx, item in enumerate(top_velocity_items):
+        card_html = render_highlight_card(
+            item["product"],
+            item["sku"],
+            item["daily_avg"],
+            item["trend"],
+            item["days_remaining"]
+        )
+        if idx == 0:
+            col_high1.markdown(card_html, unsafe_allow_html=True)
+        elif idx == 1:
+            col_high2.markdown(card_html, unsafe_allow_html=True)
+        elif idx == 2:
+            col_high3.markdown(card_html, unsafe_allow_html=True)
+            
     st.write("")
     
     # Main content / Split
@@ -638,21 +694,38 @@ if selected_page == "Overview":
         # Alert List rendering
         for item in overview_data.get("alerts", []):
             is_critical = item["status"] == "CRITICAL"
-            badge_color = "#E63946" if is_critical else ("#F39C12" if item["status"] == "LOW STOCK" else "#94A3B8")
+            badge_color = "#E63946" if is_critical else ("#F59E0B" if item["status"] == "LOW STOCK" else "#94A3B8")
             badge_bg = "#FEE2E2" if is_critical else ("#FEF3C7" if item["status"] == "LOW STOCK" else "#F3F4F6")
             
             # Draw progress bar for alerts
             progress_pct = min(100.0, (item["days_left"] / 14.0) * 100.0)
             
+            # Render Alert Card first
+            st.markdown(f"""
+            <div style="background-color: #F8FAFC; border: 1px solid #E4EDF5; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 700; font-size: 13px; color: #1C3D5A; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{item["product"]}">{item["product"]}</span>
+                    <span style="background-color: {badge_bg}; color: {badge_color}; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid {badge_color}30;">{item["status"]}</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #8CA0B8;">
+                    <span>{item["sku"]}</span>
+                    <span style="color: {badge_color}; font-weight: 700;">{item["days_left"]}d remaining</span>
+                </div>
+                <div style="background-color: #E2E8F0; width: 100%; height: 4px; border-radius: 2px; overflow: hidden;">
+                    <div style="background-color: {badge_color}; width: {progress_pct}%; height: 100%;"></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
             # If it has dialog block, render it
             if "dialog" in item:
                 st.markdown(f"""
-                <div style="border-top: 1px dashed #D5E3F0; margin-top: 15px; padding-top: 15px;">
-                    <div style="background-color: #EBF3FC; border: 1px solid #BFE3F9; border-radius: 8px; padding: 15px; text-align: left;">
-                        <div style="font-weight: 700; color: #1C3D5A; font-size: 13px; margin-bottom: 5px;">Restock Recommendation</div>
-                        <div style="font-size: 12px; color: #4A607A; line-height: 1.4; margin-bottom: 8px;">{item["dialog"]["text"]}</div>
-                        <div style="font-size: 11px; font-weight: 600; color: #E63946; margin-bottom: 12px;">⏰ {item["dialog"]["timer"]}</div>
+                <div style="background-color: #EBF3FC; border: 1px solid #BFE3F9; border-radius: 8px; padding: 15px; text-align: left; box-shadow: 0 4px 6px rgba(0, 168, 198, 0.08); margin-bottom: 12px;">
+                    <div style="font-weight: 700; color: #1C3D5A; font-size: 13px; margin-bottom: 5px; display: flex; align-items: center; gap: 6px;">
+                        <span>⚡</span> Restock Recommendation
                     </div>
+                    <div style="font-size: 12px; color: #4A607A; line-height: 1.4; margin-bottom: 8px;">{item["dialog"]["text"]}</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #E63946; margin-bottom: 2px;">⏰ {item["dialog"]["timer"]}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -666,22 +739,6 @@ if selected_page == "Overview":
                 with btn_no:
                     if st.button("No", key="alert_restock_no", use_container_width=True):
                         st.toast("Replenishment dialog dismissed.")
-            else:
-                st.markdown(f"""
-                <div style="background-color: #F8FAFC; border: 1px solid #E4EDF5; border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; font-size: 13px; color: #1C3D5A; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{item["product"]}</span>
-                        <span style="background-color: {badge_bg}; color: {badge_color}; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">{item["status"]}</span>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #8CA0B8;">
-                        <span>{item["sku"]}</span>
-                        <span style="color: {badge_color}; font-weight: 700;">{item["days_left"]}d remaining</span>
-                    </div>
-                    <div style="background-color: #E2E8F0; width: 100%; height: 4px; border-radius: 2px; overflow: hidden;">
-                        <div style="background-color: {badge_color}; width: {progress_pct}%; height: 100%;"></div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1009,104 +1066,153 @@ elif selected_page == "AI_Agent":
     </div>
     """, unsafe_allow_html=True)
     
-    # Recommendations Header & Action Button
-    col_hdr_recs, col_hdr_btn = st.columns([3, 1])
-    with col_hdr_recs:
-        st.markdown(f"""
-        <div style="font-weight: 700; color: #1C3D5A; font-size: 16px; margin-bottom: 12px; margin-top: 4px;">Recommended Orders ({len(recs)} items)</div>
-        """, unsafe_allow_html=True)
-    with col_hdr_btn:
-        # Action button to approve all remaining orders
-        if st.button("📥 APPROVE ALL ORDERS", key="approve_all", use_container_width=True):
-            for item in recs:
-                st.session_state[f"approved_{item['sku']}"] = True
-            st.toast("✅ Approved all recommended orders!", icon="📦")
-            st.rerun()
-            
-    st.write("")
+    # Define tabs for Day 4 task
+    tab_orders, tab_report = st.tabs(["📋 Actionable Recommendations", "🧠 AI Executive Report & Reasoning"])
     
-    # Render recommended orders list
-    for idx, item in enumerate(recs):
-        is_approved = st.session_state.get(f"approved_{item['sku']}", item["approved"])
-        is_urgent = item["urgency"] == "URGENT ORDER"
-        
-        # Color coding state matching
-        card_bg = "#FFFFFF" if is_approved else "#F8FAFC"
-        card_opacity = "1.0" if is_approved else "0.55"
-        border_color = ("#EF4444" if is_urgent else "#F59E0B") if is_approved else "#94A3B8"
-        badge_bg = ("#FEE2E2" if is_urgent else "#FEF3C7") if is_approved else "#E2E8F0"
-        badge_fg = ("#EF4444" if is_urgent else "#D97706") if is_approved else "#64748B"
-        urg_text = item["urgency"] if is_approved else "REJECTED"
-        
-        # Render item columns
-        col_desc, col_units, col_vendor, col_action_btns = st.columns([5.5, 1.5, 2, 1.5])
-        
-        with col_desc:
+    with tab_orders:
+        # Recommendations Header & Action Button
+        col_hdr_recs, col_hdr_btn = st.columns([3, 1])
+        with col_hdr_recs:
             st.markdown(f"""
-            <div style="border-left: 4px solid {border_color}; background-color: {card_bg}; opacity: {card_opacity}; border-top: 1px solid #E4EDF5; border-right: 1px solid #E4EDF5; border-bottom: 1px solid #E4EDF5; border-radius: 0 8px 8px 0; padding: 14px 16px; min-height: 85px; display: flex; flex-direction: column; justify-content: center;">
-                <div>
-                    <span style="background-color: {badge_bg}; color: {badge_fg}; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; display: inline-block; vertical-align: middle;">{urg_text}</span>
-                    <span style="font-weight: 700; color: #1C3D5A; font-size: 15px; vertical-align: middle;">{item["product"]}</span>
-                    <span style="color: #8CA0B8; font-size: 11px; margin-left: 6px; vertical-align: middle; font-family: monospace;">{item["sku"]}</span>
-                </div>
-                <div style="font-size: 12.5px; color: #5B7A9C; line-height: 1.4; margin-top: 5px;">{item["reason"]}</div>
-            </div>
+            <div style="font-weight: 700; color: #1C3D5A; font-size: 16px; margin-bottom: 12px; margin-top: 4px;">Recommended Orders ({len(recs)} items)</div>
             """, unsafe_allow_html=True)
-            
-        with col_units:
-            st.markdown(f"""
-            <div style="background-color: {card_bg}; opacity: {card_opacity}; border-top: 1px solid #E4EDF5; border-bottom: 1px solid #E4EDF5; padding: 14px 10px; min-height: 85px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                <div style="font-size: 18px; font-weight: 700; color: #1C3D5A;">{item["units"]}</div>
-                <div style="font-size: 11px; color: #5B7A9C;">units</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col_vendor:
-            st.markdown(f"""
-            <div style="background-color: {card_bg}; opacity: {card_opacity}; border-top: 1px solid #E4EDF5; border-bottom: 1px solid #E4EDF5; padding: 14px 10px; min-height: 85px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;">
-                <div style="font-weight: 600; color: #1C3D5A; font-size: 13px; line-height: 1.2;">{item["supplier"]}</div>
-                <div style="font-size: 11px; color: #5B7A9C; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                    <span>🕒</span> {item["lead_time_days"]} days
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col_action_btns:
-            # Interactive action buttons
-            st.markdown(f"""
-            <style>
-            .btn-holder-{idx} {{
-                background-color: {card_bg};
-                border-top: 1px solid #E4EDF5;
-                border-bottom: 1px solid #E4EDF5;
-                border-right: 1px solid #E4EDF5;
-                border-radius: 0 8px 8px 0;
-                min-height: 85px;
-                padding: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-            }}
-            </style>
-            <div class="btn-holder-{idx}">
-            """, unsafe_allow_html=True)
-            
-            sub_b1, sub_b2 = st.columns(2)
-            with sub_b1:
-                # Approve check button
-                if st.button("✓", key=f"app_check_{item['sku']}", use_container_width=True, help="Approve Order"):
-                    st.session_state.proposal_db[idx]["approved"] = True
+        with col_hdr_btn:
+            # Action button to approve all remaining orders
+            if st.button("📥 APPROVE ALL ORDERS", key="approve_all", use_container_width=True):
+                for item in recs:
                     st.session_state[f"approved_{item['sku']}"] = True
-                    st.toast(f"✅ Approved: {item['product']}")
-                    st.rerun()
-            with sub_b2:
-                # Reject cross button
-                if st.button("✗", key=f"rej_cross_{item['sku']}", use_container_width=True, help="Reject Order"):
-                    st.session_state.proposal_db[idx]["approved"] = False
-                    st.session_state[f"approved_{item['sku']}"] = False
-                    st.toast(f"❌ Rejected: {item['product']}")
-                    st.rerun()
+                st.toast("✅ Approved all recommended orders!", icon="📦")
+                st.rerun()
+                
+        st.write("")
+        
+        # Render recommended orders list
+        for idx, item in enumerate(recs):
+            is_approved = st.session_state.get(f"approved_{item['sku']}", item["approved"])
+            is_urgent = item["urgency"] == "URGENT ORDER"
+            
+            # Color coding state matching
+            card_bg = "#FFFFFF" if is_approved else "#F8FAFC"
+            card_opacity = "1.0" if is_approved else "0.55"
+            border_color = ("#EF4444" if is_urgent else "#F59E0B") if is_approved else "#94A3B8"
+            badge_bg = ("#FEE2E2" if is_urgent else "#FEF3C7") if is_approved else "#E2E8F0"
+            badge_fg = ("#EF4444" if is_urgent else "#D97706") if is_approved else "#64748B"
+            urg_text = item["urgency"] if is_approved else "REJECTED"
+            
+            # Render item columns
+            col_desc, col_units, col_vendor, col_action_btns = st.columns([5.5, 1.5, 2, 1.5])
+            
+            with col_desc:
+                st.markdown(f"""
+                <div style="border-left: 4px solid {border_color}; background-color: {card_bg}; opacity: {card_opacity}; border-top: 1px solid #E4EDF5; border-right: 1px solid #E4EDF5; border-bottom: 1px solid #E4EDF5; border-radius: 0 8px 8px 0; padding: 14px 16px; min-height: 85px; display: flex; flex-direction: column; justify-content: center;">
+                    <div>
+                        <span style="background-color: {badge_bg}; color: {badge_fg}; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; display: inline-block; vertical-align: middle;">{urg_text}</span>
+                        <span style="font-weight: 700; color: #1C3D5A; font-size: 15px; vertical-align: middle;">{item["product"]}</span>
+                        <span style="color: #8CA0B8; font-size: 11px; margin-left: 6px; vertical-align: middle; font-family: monospace;">{item["sku"]}</span>
+                    </div>
+                    <div style="font-size: 12.5px; color: #5B7A9C; line-height: 1.4; margin-top: 5px;">{item["reason"]}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_units:
+                st.markdown(f"""
+                <div style="background-color: {card_bg}; opacity: {card_opacity}; border-top: 1px solid #E4EDF5; border-bottom: 1px solid #E4EDF5; padding: 14px 10px; min-height: 85px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                    <div style="font-size: 18px; font-weight: 700; color: #1C3D5A;">{item["units"]}</div>
+                    <div style="font-size: 11px; color: #5B7A9C;">units</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_vendor:
+                st.markdown(f"""
+                <div style="background-color: {card_bg}; opacity: {card_opacity}; border-top: 1px solid #E4EDF5; border-bottom: 1px solid #E4EDF5; padding: 14px 10px; min-height: 85px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center;">
+                    <div style="font-weight: 600; color: #1C3D5A; font-size: 13px; line-height: 1.2;">{item["supplier"]}</div>
+                    <div style="font-size: 11px; color: #5B7A9C; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                        <span>🕒</span> {item["lead_time_days"]} days
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_action_btns:
+                # Interactive action buttons
+                st.markdown(f"""
+                <style>
+                .btn-holder-{idx} {{
+                    background-color: {card_bg};
+                    border-top: 1px solid #E4EDF5;
+                    border-bottom: 1px solid #E4EDF5;
+                    border-right: 1px solid #E4EDF5;
+                    border-radius: 0 8px 8px 0;
+                    min-height: 85px;
+                    padding: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                }}
+                </style>
+                <div class="btn-holder-{idx}">
+                """, unsafe_allow_html=True)
+                
+                sub_b1, sub_b2 = st.columns(2)
+                with sub_b1:
+                    # Approve check button
+                    if st.button("✓", key=f"app_check_{item['sku']}", use_container_width=True, help="Approve Order"):
+                        st.session_state.proposal_db[idx]["approved"] = True
+                        st.session_state[f"approved_{item['sku']}"] = True
+                        st.toast(f"✅ Approved: {item['product']}")
+                        st.rerun()
+                with sub_b2:
+                    # Reject cross button
+                    if st.button("✗", key=f"rej_cross_{item['sku']}", use_container_width=True, help="Reject Order"):
+                        st.session_state.proposal_db[idx]["approved"] = False
+                        st.session_state[f"approved_{item['sku']}"] = False
+                        st.toast(f"❌ Rejected: {item['product']}")
+                        st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            st.write("")
+            
+    with tab_report:
+        col_report_left, col_report_right = st.columns([1.8, 1.2])
+        
+        with col_report_left:
+            st.markdown(f"""
+            <div style="background-color: #FFFFFF; border: 1px solid #E4EDF5; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(28, 61, 90, 0.02); min-height: 520px; color: #1C3D5A;">
+                <div style="font-size: 18px; font-weight: 700; color: #1C3D5A; border-bottom: 2px solid #E4EDF5; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                    <span>📄</span> Procurement Agent Memo
+                </div>
+            """, unsafe_allow_html=True)
+            st.markdown(agent_proposal.get("executive_report", ""))
             st.markdown("</div>", unsafe_allow_html=True)
             
-        st.write("")
+        with col_report_right:
+            st.markdown("""
+            <div style="background-color: #FFFFFF; border: 1px solid #E4EDF5; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(28, 61, 90, 0.02); min-height: 520px; color: #1C3D5A;">
+                <div style="font-size: 16px; font-weight: 700; color: #1C3D5A; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                    <span>🧠</span> LangGraph Node Tracing
+                </div>
+            """, unsafe_allow_html=True)
+            
+            for node_idx, step in enumerate(agent_proposal.get("cognitive_reasoning_log", [])):
+                node_name = step["node"]
+                node_msg = step["message"]
+                node_step = step["step"]
+                node_status = step["status"]
+                
+                st.markdown(f"""
+                <div style="display: flex; gap: 12px; position: relative; margin-bottom: 18px;">
+                    {"<div style='position: absolute; left: 15px; top: 30px; bottom: -30px; width: 2px; background-color: #00A8C630; z-index: 1;'></div>" if node_idx < len(agent_proposal.get("cognitive_reasoning_log", [])) - 1 else ""}
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background-color: #EBF3FC; border: 2.5px solid #00A8C6; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #00A8C6; z-index: 2; flex-shrink: 0;">
+                        {node_step}
+                    </div>
+                    <div style="background-color: #F8FAFC; border: 1px solid #E4EDF5; border-radius: 8px; padding: 12px; width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-family: monospace; font-weight: 700; font-size: 12px; color: #1C3D5A;">{node_name}</span>
+                            <span style="background-color: #D1FAE5; color: #10B981; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #10B98120;">{node_status}</span>
+                        </div>
+                        <div style="font-size: 11.5px; color: #5B7A9C; line-height: 1.4;">{node_msg}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            st.markdown("</div>", unsafe_allow_html=True)
