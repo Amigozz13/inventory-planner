@@ -21,8 +21,7 @@ def search_policy(user_query):
         return results[0].page_content
 
     return "No policy found."
-
-
+    
 if __name__ == "__main__":
 
     query = "What should I do if inventory is below 5 days?"
