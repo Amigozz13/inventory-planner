@@ -1,18 +1,45 @@
 from state import State
+
 def risk_analysis(state: State):
-    if "error" in state:
+
+    if state.get("error"):
         return state
-    inventory = state.get("inventory", {})
-    stock = inventory.get("current_stock", 0)
-    sold = inventory.get("quantity_sold", 0)
-    if stock is None or sold is None:
-        state["risk"] = "unknown"
-        return state
-    if stock <= sold:
-        risk = "high"
-    elif stock <= sold * 2:
-        risk = "medium"
+
+    if state.get("all_dates_inventory"):
+
+        for item in state["all_dates_inventory"]:
+
+            stock = item["current_stock"]
+            sold = item["quantity_sold"]
+
+            if stock <= sold:
+                risk = "High"
+            elif stock <= sold * 2:
+                risk = "Medium"
+            else:
+                risk = "Low"
+
+            item["risk"] = risk
+
+        # Store latest risk
+        state["risk"] = state["all_dates_inventory"][-1]["risk"]
+        state["inventory"]["risk"] = state["risk"]
+
     else:
-        risk = "low"
-    state["risk"] = risk
+
+        inventory = state.get("inventory", {})
+
+        stock = inventory.get("current_stock", 0)
+        sold = inventory.get("quantity_sold", 0)
+
+        if stock <= sold:
+            risk = "High"
+        elif stock <= sold * 2:
+            risk = "Medium"
+        else:
+            risk = "Low"
+
+        inventory["risk"] = risk
+        state["risk"] = risk
+
     return state
