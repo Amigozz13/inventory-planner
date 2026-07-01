@@ -1,13 +1,12 @@
-from state import State
-from  rag_policy.search import search_policy
 import os
 import sys
 project_root = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..")
 )
 if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
+    sys.path.insert(0, project_root)   
+from state import State
+from  rag_policy.search import search_policy
 def rag_agent(state:State):
     if state.get('error'):
         return state
